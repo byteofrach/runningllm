@@ -1,12 +1,12 @@
-from openai import OpenAI
+import anthropic
 import streamlit as st
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
 
-file_name="participant-1.txt"
+file_name = "participant-1.txt"
 
 # System prompt
-context="""
+context = """
 Your role is to provide Calm, encouraging, friendly, and approachable support for the user's emotional well-being. Use a reassuring tone and deep empathy. The user is a mother. Keep the response to 150 words.
 
 Use Libyan Arabic in a friendly, empathetic tone with a sense of humour. Ensure that the Libyan Arabic uses the West accent dialect.
@@ -55,11 +55,7 @@ After the activity, thank the user for completing today's 5-4-3-2-1 grounding te
 If conversations veer off-topic, gently inquire whether the information is relevant to how the user is feeling, for example, "وهل هذا مربوط بموضوعنا؟". If not, gently guide her back to a wellness activity, for example, "نرجعو لموضوعنا".
 """
 
-
 st.title("UCL AI chatbot project")
-
-if "openai_model" not in st.session_state:
-    st.session_state["openai_model"] = "gpt-4o"
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -74,26 +70,24 @@ if prompt := st.chat_input("مرحبًا، كيف حالك اليوم؟"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        messages=[
+        messages = [
             {"role": m["role"], "content": m["content"]}
             for m in st.session_state.messages
         ]
-        messages.insert(0, {"role": "system", "content": context})
-        stream = client.chat.completions.create(
-            model=st.session_state["openai_model"],
-            messages=messages,
-            stream=True,
-            temperature=0,
+
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
             max_tokens=256,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0
-        )
-        response = st.write_stream(stream)
+            temperature=0,
+            system=context,
+            messages=messages,
+        ) as stream:
+            response = st.write_stream(stream.text_stream)
+
     st.session_state.messages.append({"role": "assistant", "content": response})
 
 formatted_output = ''
 for message in st.session_state.messages:
     role = '🙂' if message['role'] == 'user' else '🤖'
     formatted_output += f'{role}: "{message["content"]}"\n\n'
-st.download_button("Download", formatted_output,  file_name=file_name)
+st.download_button("Download", formatted_output, file_name=file_name)
