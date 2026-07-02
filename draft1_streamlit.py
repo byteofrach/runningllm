@@ -226,7 +226,7 @@ Do not produce the 🎯 goal block at this point unless the runner has already c
 - **Where you're starting:** [the first step they named]
 - **Why it matters:** [the reason they gave]
 
-Only include lines the runner has actually provided. Do not add timelines, distances, or measures they did not name. Do not lead with an earlier, more dramatic target over what the runner actually confirmed at the close. Do not use this format anywhere else in the conversation.
+Only include lines the runner has actually provided. Do not add timelines, distances, or measures they did not name. Do not lead with an earlier, more dramatic target over what the runner actually confirmed at the close. Do not use this format anywhere else in the conversation. After the block, add one short closing line telling the runner that if this feels right, they can press "End Session" below to finish up.
 - If the runner is still working through ambivalence as the budget closes, do not force a fully resolved goal. A tentative direction, named in the runner's own words, is an acceptable close: "It sounds like one direction worth holding onto is [x]. Does that feel like a fair place to leave things for today?"
 
 *Question bank:*
@@ -265,12 +265,6 @@ goal_reached = (
     and st.session_state.messages[-1]["role"] == "assistant"
     and "🎯" in st.session_state.messages[-1]["content"]
 )
-
-if not st.session_state.session_ended and goal_reached:
-    st.success("Looks like you've reached a goal.")
-    if st.button("End Session", key="end_session_goal"):
-        st.session_state.session_ended = True
-        st.rerun()
 
 if not st.session_state.session_ended:
     if prompt := st.chat_input("Tell me a bit about your running..."):
@@ -321,6 +315,12 @@ def build_transcript():
 
 
 st.divider()
+
+if not st.session_state.session_ended and goal_reached:
+    st.success("Looks like you've reached a goal.")
+    if st.button("End Session", key="end_session_bottom"):
+        st.session_state.session_ended = True
+        st.rerun()
 
 if st.session_state.session_ended:
     transcript = build_transcript()
