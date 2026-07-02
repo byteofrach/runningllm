@@ -7,7 +7,7 @@ if "participant_id" not in st.session_state:
     st.session_state.participant_id = None
 
 if st.session_state.participant_id is None:
-    st.title("Running Companion")
+    st.title("Rebuilding Your Running Goal")
     participant_input = st.text_input("Enter your participant number to begin:")
     if participant_input:
         st.session_state.participant_id = participant_input
@@ -235,10 +235,20 @@ Only include lines the runner has actually provided. Do not add timelines, dista
 - "What's next for you?"
 """
 
-st.title("Running Companion")
+st.title("Rebuilding Your Running Goal")
+st.caption("A reflective chat about running, injury, and what comes next. Type below to start.")
 
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": (
+                "Hi, welcome. I'm glad you're here.\n\n"
+                "To get started, could you tell me a bit about your running setup "
+                "— do you use Strava, Garmin, or another tracker to follow your running?"
+            ),
+        }
+    ]
 
 if "session_ended" not in st.session_state:
     st.session_state.session_ended = False
