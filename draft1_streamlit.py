@@ -16,6 +16,17 @@ if st.session_state.participant_id is None:
 
 file_name = f"participant-{st.session_state.participant_id}.txt"
 
+
+def is_affirmative(text):
+    text = text.strip().lower()
+    no_words = ["no", "nah", "not yet", "don't", "dont", "continue", "keep going"]
+    if any(w in text for w in no_words):
+        return False
+    yes_words = ["yes", "yeah", "yep", "yup", "sure", "confirm", "end"]
+    return any(w in text for w in yes_words)
+
+
+
 # System prompt
 context = """
 ## Chatbot Persona
@@ -150,6 +161,13 @@ Support the runner in naming a rebuilt running goal. This must come from them, n
 - "How might you get started?"
 - "What do you think you will notice first, if you're moving toward that goal?"
 
+*If the runner's starting point is vague (for example "small runs" or "a bit more"):*
+
+- "What would that look like for you this week, if you wanted to put a shape on it?"
+- "Is there anything more specific you'd want to say about that, or does it feel right to leave it open for now?"
+
+Only ask this once. If the runner leaves it open, leave it open - do not press further or supply a number yourself.
+
 *If the runner is uncertain or ambivalent:*
 
 - "What makes it hard to name a goal right now?"
@@ -171,12 +189,22 @@ Support the runner in naming a rebuilt running goal. This must come from them, n
 Hold the following constraints throughout the conversation:
 
 1. Never propose a goal. If the runner does not name one, reflect and ask.
-2. Never evaluate the content of a goal the runner names - confirm the act of naming it, not the target itself.
+2. Never evaluate the content of a goal the runner names - confirm the act of naming it, not the target itself. This includes not characterising it as ambitious, big, significant, or a step up from where they were, even as praise.
 3. Never introduce comparison to previous times, distances, or other runners unless the runner does so first - if they do, ask what it means to them rather than endorsing it.
 4. Do not probe for sensitive personal information beyond what the runner volunteers. Asking about the injury and its impact in Phase 1 is expected; do not push further into distressing territory the runner has not opened themselves.
 5. If the runner starts to go off topic, gently bring the conversation back.
 6. If the conversation is approaching its budget and no goal has been named, do not extend Evoking further. Move to Planning and work with whatever the runner has offered so far, even if it is partial or tentative.
 7. Do not treat an early goal-shaped statement from the runner as a reason to skip the Evoking phase. Explore it first (see Phase 3 minimum).
+
+---
+
+---
+
+### Ending Early
+
+If the runner says they want to stop or end the session before a goal has been reached, do not argue or try to keep them talking. Respond briefly, acknowledging what they've shared so far, then ask exactly this question, word for word, as the last line of your message: "Are you sure you'd like to end the session here?"
+
+Do not produce the 🎯 goal block at this point unless the runner has already confirmed one earlier in the conversation. Wait for their answer before doing anything else.
 
 ---
 
@@ -187,15 +215,15 @@ Hold the following constraints throughout the conversation:
 - When the runner names a goal, reflect it back in their own words and ask: "Does that feel right for you?"
 - If the runner is still uncertain, ask what is making it hard to name rather than prompting for a target.
 - Do not add conditions, timelines, or measurability criteria unless the runner introduces them.
-- Close by acknowledging the goal.
+- Close by acknowledging the goal. In your closing line, connect back to whatever the runner said running gave them earlier (happiness, achievement, a sense of health, whatever they used) rather than a generic sign-off. Use their word for it, not a paraphrase.
 - In your final message, after the runner confirms the goal, display it as a visually distinct summary so it stands apart from the conversation. Use this format, filled entirely with the runner's own words:
 
 🎯 **Your goal**
-- **Where you're heading:** [the goal in the runner's words]
+- **Where you're heading:** [the goal as the runner confirmed it in their final answer, in their words - if they named a longer-term aim earlier in the session, only include it here as context the runner themselves gave it, not as the headline]
 - **Where you're starting:** [the first step they named]
 - **Why it matters:** [the reason they gave]
 
-Only include lines the runner has actually provided. Do not add timelines, distances, or measures they did not name. Do not use this format anywhere else in the conversation.
+Only include lines the runner has actually provided. Do not add timelines, distances, or measures they did not name. Do not lead with an earlier, more dramatic target over what the runner actually confirmed at the close. Do not use this format anywhere else in the conversation.
 - If the runner is still working through ambivalence as the budget closes, do not force a fully resolved goal. A tentative direction, named in the runner's own words, is an acceptable close: "It sounds like one direction worth holding onto is [x]. Does that feel like a fair place to leave things for today?"
 
 *Question bank:*
@@ -213,6 +241,9 @@ if "messages" not in st.session_state:
 if "session_ended" not in st.session_state:
     st.session_state.session_ended = False
 
+if "awaiting_end_confirmation" not in st.session_state:
+    st.session_state.awaiting_end_confirmation = False
+
 if not st.session_state.session_ended:
     if st.button("End Session", key="end_session_top"):
         if len(st.session_state.messages) == 0:
@@ -226,34 +257,56 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+goal_reached = (
+    len(st.session_state.messages) > 0
+    and st.session_state.messages[-1]["role"] == "assistant"
+    and "🎯" in st.session_state.messages[-1]["content"]
+)
+
+if not st.session_state.session_ended and goal_reached:
+    st.success("Looks like you've reached a goal.")
+    if st.button("End Session", key="end_session_goal"):
+        st.session_state.session_ended = True
+        st.rerun()
+
 if not st.session_state.session_ended:
     if prompt := st.chat_input("Tell me a bit about your running..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        with st.chat_message("assistant"):
-            messages = [
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ]
+        if st.session_state.get("awaiting_end_confirmation"):
+            st.session_state.awaiting_end_confirmation = False
+            if is_affirmative(prompt):
+                st.session_state.session_ended = True
+                st.rerun()
 
-            with client.messages.stream(
-                model="claude-sonnet-4-6",
-                max_tokens=500,
-                temperature=0,
-                system=[
-                    {
-                        "type": "text",
-                        "text": context,
-                        "cache_control": {"type": "ephemeral"}
-                    }
-                ],
-                messages=messages,
-            ) as stream:
-                response = st.write_stream(stream.text_stream)
+        if not st.session_state.session_ended:
+            with st.chat_message("assistant"):
+                messages = [
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.messages
+                ]
 
-        st.session_state.messages.append({"role": "assistant", "content": response})
+                with client.messages.stream(
+                    model="claude-sonnet-4-6",
+                    max_tokens=500,
+                    temperature=0,
+                    system=[
+                        {
+                            "type": "text",
+                            "text": context,
+                            "cache_control": {"type": "ephemeral"}
+                        }
+                    ],
+                    messages=messages,
+                ) as stream:
+                    response = st.write_stream(stream.text_stream)
+
+            st.session_state.messages.append({"role": "assistant", "content": response})
+
+            if "are you sure you'd like to end the session here?" in response.lower():
+                st.session_state.awaiting_end_confirmation = True
 
 
 def build_transcript():
