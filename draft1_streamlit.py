@@ -243,9 +243,9 @@ if "messages" not in st.session_state:
         {
             "role": "assistant",
             "content": (
-                "Hi, welcome. I'm glad you're here.\n\n"
+                "Hi, welcome.\n\n"
                 "To get started, could you tell me a bit about your running setup "
-                "— do you use Strava, Garmin, or another tracker to follow your running?"
+                "- what tracker do you use to follow your running?"
             ),
         }
     ]
