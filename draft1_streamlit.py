@@ -283,8 +283,12 @@ if not st.session_state.session_ended:
             st.markdown(prompt)
 
         if prompt.strip().lower() in ["end", "end session"]:
-            st.session_state.session_ended = True
-            st.rerun()
+            confirm_message = "Are you sure you'd like to end the session here?"
+            st.session_state.messages.append({"role": "assistant", "content": confirm_message})
+            with st.chat_message("assistant"):
+                st.markdown(confirm_message)
+            st.session_state.awaiting_end_confirmation = True
+            st.stop()
 
         if st.session_state.get("awaiting_end_confirmation"):
             st.session_state.awaiting_end_confirmation = False
