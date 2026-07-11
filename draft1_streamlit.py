@@ -37,7 +37,12 @@ Purpose: Your purpose is to support the runner in reflecting on what running has
 
 Tone: Warm, unhurried, curious, engaged. You take what the runner says seriously. You do not minimise difficulty or rush toward solutions.
 
-Style: You ask one open question at a time. When a topic has more than one part (for example whether the runner is injured and what the injury is), ask a single question with one question mark, and put any request for further detail in parentheses afterward rather than stacking a second full question in the same message. For example: "Are you currently injured, or has it fully healed at this point? (If you're comfortable, could you tell me what the injury is?)" You use the runner's own words when reflecting back. You never introduce new framings, comparisons, or targets that the runner has not already raised. When the runner discloses something painful or upsetting, you stay with it before moving on. Your responses are short so the runner does most of the talking (200-300 words; 2-3 sentences is often better).
+Style: You ask one open question at a time. When a question has a core ask and a request for further detail, put the core question on its own line, then put the detail request on the next line in parentheses, rather than stacking a second full question in the same message. For example:
+
+"Are you currently injured, or has it fully healed at this point?
+(If you're comfortable, please describe the injury.)"
+
+You use the runner's own words when reflecting back. You never introduce new framings, comparisons, or targets that the runner has not already raised. When the runner discloses something painful or upsetting, you stay with it before moving on. Your responses are short so the runner does most of the talking (200-300 words; 2-3 sentences is often better).
 
 Keep language plain and measured rather than effusive. Do not stack an affirmation and a reflection in the same turn - pick one. Avoid intensifiers like "really," "clearly," "powerful," or "genuinely" unless the runner's own words warrant echoing them. One acknowledgement is enough; you do not need to name how significant, honest, or powerful something is every time the runner shares something.
 
@@ -68,7 +73,8 @@ If the runner's answer is brief or emotionally loaded, stay on that thread with 
 
 - "What tracker do you use for your running: Strava, Garmin, something else?"
 - "What did your running look like before the injury?"
-- "Are you currently injured, or has it fully healed at this point? (If you're comfortable, could you tell me what the injury is?)"
+- "Are you currently injured, or has it fully healed at this point?
+(If you're comfortable, please describe the injury.)"
 - "Do you already have a goal in mind for your running, even if it's rough?"
 - "When you looked at your data today, what did you notice?"
 
@@ -237,6 +243,15 @@ Only include lines the runner has actually provided. Do not add timelines, dista
 - "What's next for you?"
 """
 
+
+def build_transcript():
+    formatted_output = ''
+    for message in st.session_state.messages:
+        role = 'Runner' if message['role'] == 'user' else 'Assistant'
+        formatted_output += f'{role}: "{message["content"]}"\n\n'
+    return formatted_output
+
+
 st.title("Running Companion")
 
 if "messages" not in st.session_state:
@@ -264,6 +279,19 @@ if not st.session_state.session_ended:
         else:
             st.session_state.session_ended = True
             st.rerun()
+    st.divider()
+
+# Once the session has ended, show the download button immediately at the top,
+# so participants don't have to scroll past the whole transcript to find it.
+if st.session_state.session_ended:
+    transcript = build_transcript()
+    st.info("This session has ended. Please download your transcript and send it back to Rachel.")
+    st.download_button(
+        "Download transcript",
+        transcript,
+        file_name=file_name,
+        key="download_top",
+    )
     st.divider()
 
 for message in st.session_state.messages:
@@ -324,14 +352,6 @@ if not st.session_state.session_ended:
                 st.session_state.awaiting_end_confirmation = True
 
 
-def build_transcript():
-    formatted_output = ''
-    for message in st.session_state.messages:
-        role = 'Runner' if message['role'] == 'user' else 'Assistant'
-        formatted_output += f'{role}: "{message["content"]}"\n\n'
-    return formatted_output
-
-
 st.divider()
 
 if not st.session_state.session_ended and goal_reached:
@@ -343,4 +363,9 @@ if not st.session_state.session_ended and goal_reached:
 if st.session_state.session_ended:
     transcript = build_transcript()
     st.info("This session has ended. Please download your transcript and send it back to Rachel.")
-    st.download_button("Download transcript", transcript, file_name=file_name)
+    st.download_button(
+        "Download transcript",
+        transcript,
+        file_name=file_name,
+        key="download_bottom",
+    )
