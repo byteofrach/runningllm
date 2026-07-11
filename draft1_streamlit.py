@@ -292,10 +292,17 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+def is_goal_block(text):
+    lowered = text.lower()
+    if "🎯" in text:
+        return True
+    # Fallback: model sometimes omits the emoji but keeps the block structure.
+    return "your goal" in lowered and "where you're heading" in lowered
+
 goal_reached = (
     len(st.session_state.messages) > 0
     and st.session_state.messages[-1]["role"] == "assistant"
-    and "🎯" in st.session_state.messages[-1]["content"]
+    and is_goal_block(st.session_state.messages[-1]["content"])
 )
 
 if not st.session_state.session_ended:
